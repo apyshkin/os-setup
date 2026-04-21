@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NVIM_CONFIG_REPO="https://github.com/apyshkin/nvim-config"
+NVIM_CONFIG_REPO="https://github.com/apyshkin/linux-setup"
 NVIM_CONFIG_DIR="$HOME/.config/nvim"
 NVIM_BIN_DIR="$HOME/.local/bin"
 NVIM_BIN="$NVIM_BIN_DIR/nvim"
