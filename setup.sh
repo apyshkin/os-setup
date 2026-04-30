@@ -1,39 +1,64 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NVIM_CONFIG_REPO="https://github.com/apyshkin/nvim-config"
-NVIM_CONFIG_DIR="$HOME/.config/nvim"
-NVIM_BIN_DIR="$HOME/.local/bin"
-NVIM_BIN="$NVIM_BIN_DIR/nvim"
+# Bootstrap a fresh machine with this dotfiles repo.
+# Idempotent — safe to re-run.
+
+REPO_URL="https://github.com/apyshkin/os-setup"
+LOCAL_BIN="$HOME/.local/bin"
+NVIM_BIN="$LOCAL_BIN/nvim"
 APPIMAGE_URL="https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage"
 
-echo "=== Neovim Setup ==="
+echo "=== os-setup bootstrap ==="
 
-# Install Neovim AppImage
-mkdir -p "$NVIM_BIN_DIR"
-if [ -f "$NVIM_BIN" ]; then
-    echo "Existing nvim found at $NVIM_BIN, backing up to nvim.bak"
-    mv "$NVIM_BIN" "$NVIM_BIN.bak"
+mkdir -p "$LOCAL_BIN"
+
+# Ensure ~/.local/bin on PATH for current shell and future bash sessions
+if ! echo "$PATH" | tr ':' '\n' | grep -qx "$LOCAL_BIN"; then
+    export PATH="$LOCAL_BIN:$PATH"
+    if [ -f "$HOME/.bashrc" ] && ! grep -q "\.local/bin" "$HOME/.bashrc"; then
+        echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$HOME/.bashrc"
+    fi
 fi
 
-echo "Downloading Neovim AppImage..."
-curl -fLo "$NVIM_BIN" "$APPIMAGE_URL"
-chmod u+x "$NVIM_BIN"
-echo "Installed nvim to $NVIM_BIN"
-
-# Ensure ~/.local/bin is on PATH
-if ! echo "$PATH" | grep -q "$NVIM_BIN_DIR"; then
-    echo "export PATH=\"$NVIM_BIN_DIR:\$PATH\"" >> "$HOME/.bashrc"
-    echo "Added $NVIM_BIN_DIR to PATH in ~/.bashrc"
+# Install ripgrep (snacks.nvim live grep)
+if ! command -v rg >/dev/null 2>&1; then
+    if command -v apt-get >/dev/null 2>&1; then
+        echo "Installing ripgrep (sudo)..."
+        sudo apt-get install -y ripgrep
+    elif command -v brew >/dev/null 2>&1; then
+        echo "Installing ripgrep (brew)..."
+        brew install ripgrep
+    else
+        echo "WARN: install ripgrep manually for snacks live grep"
+    fi
 fi
 
-# Clone config
-if [ -d "$NVIM_CONFIG_DIR" ]; then
-    echo "Config already exists at $NVIM_CONFIG_DIR, skipping clone"
-else
-    echo "Cloning nvim config..."
-    git clone "$NVIM_CONFIG_REPO" "$NVIM_CONFIG_DIR"
+# Install Neovim AppImage (Linux only)
+if [ "$(uname -s)" = "Linux" ] && [ ! -x "$NVIM_BIN" ]; then
+    echo "Downloading Neovim AppImage..."
+    curl -fLo "$NVIM_BIN" "$APPIMAGE_URL"
+    chmod u+x "$NVIM_BIN"
+elif [ "$(uname -s)" = "Darwin" ] && ! command -v nvim >/dev/null 2>&1; then
+    if command -v brew >/dev/null 2>&1; then
+        brew install neovim
+    else
+        echo "WARN: install nvim manually (brew install neovim)"
+    fi
 fi
+
+# Install chezmoi
+if [ ! -x "$LOCAL_BIN/chezmoi" ]; then
+    echo "Installing chezmoi..."
+    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$LOCAL_BIN"
+fi
+
+# Apply dotfiles
+echo "Initializing chezmoi from $REPO_URL..."
+"$LOCAL_BIN/chezmoi" init --apply "$REPO_URL"
 
 echo ""
-echo "Done! Run 'nvim' to start (plugins will install on first launch)."
+echo "Done."
+echo "  - dotfiles applied via chezmoi"
+echo "  - 'chezmoi cd' to edit, 'chezmoi apply' to materialize"
+echo "  - 'chezmoi git -- pull --rebase' to sync from remote"
