@@ -1,0 +1,6 @@
+alias la="ls -a"
+alias l="ls -alG "
+alias grep="grep --color=auto"
+alias llt="ls -alrGt"
+alias lls="ls -alrGS"
+alias les="less -S"
